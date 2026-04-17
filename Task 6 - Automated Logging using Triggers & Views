@@ -1,0 +1,42 @@
+// PaymentAuditTrigger.java  (Place in package com.example)
+package com.example;
+
+import org.h2.api.Trigger;
+import java.sql.*;
+
+public class PaymentAuditTrigger implements Trigger {
+
+    @Override
+    public void init(Connection conn, String schemaName, String triggerName,
+                     String tableName, boolean before, int type) {
+        // Initialization if needed
+    }
+
+    @Override
+    public void fire(Connection conn, Object[] oldRow, Object[] newRow) throws SQLException {
+        String operation = (oldRow == null) ? "INSERT" : "UPDATE";
+        int recordId = (newRow != null) ? (Integer) newRow[0] : (Integer) oldRow[0];
+
+        String newData = newRow != null ? buildDataString(newRow) : null;
+        String oldData = oldRow != null ? buildDataString(oldRow) : null;
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO audit_log (table_name, operation, record_id, old_data, new_data) " +
+                "VALUES ('payment_transactions', ?, ?, ?, ?)")) {
+            ps.setString(1, operation);
+            ps.setInt(2, recordId);
+            ps.setString(3, oldData);
+            ps.setString(4, newData);
+            ps.executeUpdate();
+        }
+    }
+
+    private String buildDataString(Object[] row) {
+        return "User:" + row[1] + ", Merchant:" + row[2] + ", Amount:" + row[3] + ", Status:" + row[4];
+    }
+
+    @Override
+    public void close() {}
+    @Override
+    public void remove() {}
+}
