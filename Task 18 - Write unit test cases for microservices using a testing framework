@@ -1,0 +1,113 @@
+// ============================================
+// MODEL & DTO
+// ============================================
+class User {
+    Long id;
+    String name;
+    String email;
+    // getters/setters omitted for brevity
+}
+
+class UserDto {
+    Long id;
+    String name;
+    String email;
+}
+
+// ============================================
+// REPOSITORY
+// ============================================
+interface UserRepository extends JpaRepository<User, Long> {}
+
+// ============================================
+// SERVICE
+// ============================================
+@Service
+class UserService {
+    @Autowired UserRepository repo;
+    
+    UserDto getUser(Long id) {
+        User user = repo.findById(id).orElseThrow(() -> new RuntimeException("Not found"));
+        return new UserDto(user.id, user.name, user.email);
+    }
+}
+
+// ============================================
+// CONTROLLER
+// ============================================
+@RestController
+class UserController {
+    @Autowired UserService service;
+    
+    @GetMapping("/users/{id}")
+    ResponseEntity<UserDto> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(service.getUser(id));
+    }
+}
+
+// ============================================
+// UNIT TESTS
+// ============================================
+
+// 1. REPOSITORY TEST
+@DataJpaTest
+class UserRepositoryTest {
+    @Autowired UserRepository repo;
+    
+    @Test
+    void testSaveAndFind() {
+        User user = new User();
+        user.name = "John";
+        repo.save(user);
+        
+        Optional<User> found = repo.findById(user.id);
+        assertTrue(found.isPresent());
+        assertEquals("John", found.get().name);
+    }
+}
+
+// 2. SERVICE TEST
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @Mock UserRepository repo;
+    @InjectMocks UserService service;
+    
+    @Test
+    void testGetUser_Success() {
+        User user = new User();
+        user.id = 1L;
+        user.name = "John";
+        when(repo.findById(1L)).thenReturn(Optional.of(user));
+        
+        UserDto result = service.getUser(1L);
+        
+        assertEquals("John", result.name);
+        verify(repo).findById(1L);
+    }
+    
+    @Test
+    void testGetUser_NotFound() {
+        when(repo.findById(99L)).thenReturn(Optional.empty());
+        
+        assertThrows(RuntimeException.class, () -> service.getUser(99L));
+    }
+}
+
+// 3. CONTROLLER TEST
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+    @Autowired MockMvc mockMvc;
+    @MockBean UserService service;
+    
+    @Test
+    void testGetUser() throws Exception {
+        UserDto dto = new UserDto();
+        dto.id = 1L;
+        dto.name = "John";
+        when(service.getUser(1L)).thenReturn(dto);
+        
+        mockMvc.perform(get("/users/1"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.name").value("John"));
+    }
+}
