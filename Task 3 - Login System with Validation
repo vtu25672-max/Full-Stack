@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>🔐 Secure Login System | Authentication Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 32px;
+            padding: 40px 36px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            font-size: 48px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            width: 70px;
+            height: 70px;
+            border-radius: 60px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            font-size: 15px;
+            transition: all 0.2s;
+            background: #f9fafb;
+            outline: none;
+            font-weight: 500;
+        }
+
+        .input-field:focus {
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-field.error-input {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+
+        .error-message::before {
+            content: "⚠️";
+            font-size: 11px;
+        }
+
+        .dynamic-error {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #991b1b;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .success-message {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #065f46;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .login-btn:active {
+            transform: translateY(1px);
+        }
+
+        .demo-cred {
+            background: #f3f4f6;
+            border-radius: 20px;
+            padding: 18px;
+            margin-top: 28px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+        }
+
+        .demo-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .cred-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .cred-item {
+            background: white;
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #d1d5db;
+        }
+
+        .badge {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .shake-animation {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-pwd {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <div class="login-card">
+        <div class="logo-area">
+            <div class="logo-icon">🔐</div>
+            <h1>Welcome Back</h1>
+            <div class="subtitle">Sign in to your account</div>
+        </div>
+
+        <!-- Dynamic message area (error / success) -->
+        <div id="messageArea"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm" onsubmit="return false;">
+            <div class="input-group">
+                <label class="input-label">📧 Email / Username</label>
+                <input type="text" id="username" class="input-field" placeholder="john@example.com or john_doe" autocomplete="off">
+                <div id="usernameError" class="error-message" style="display: none;"></div>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">🔒 Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" class="input-field" placeholder="••••••••">
+                    <button type="button" class="toggle-pwd" id="togglePassword" aria-label="Show password">👁️</button>
+                </div>
+                <div id="passwordError" class="error-message" style="display: none;"></div>
+            </div>
+
+            <button type="submit" class="login-btn" id="loginBtn">➜ Sign In</button>
+        </form>
+
+        <!-- Demo credentials hint (simulated database) -->
+        <div class="demo-cred">
+            <div class="demo-title">📀 TEST CREDENTIALS (Simulated DB)</div>
+            <div class="cred-row">
+                <div><span class="badge">Admin:</span> <span class="cred-item">admin@system.com</span> / <span class="cred-item">admin123</span></div>
+                <div><span class="badge">User:</span> <span class="cred-item">emma.wilson@example.com</span> / <span class="cred-item">emma2024</span></div>
+            </div>
+            <div class="cred-row" style="margin-top: 8px;">
+                <div><span class="badge">Staff:</span> <span class="cred-item">james.miller</span> / <span class="cred-item">james@789</span></div>
+                <div><span class="badge">Guest:</span> <span class="cred-item">guest@demo.com</span> / <span class="cred-item">guestpass</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ------------------------------
+    // SIMULATED DATABASE (user credentials storage)
+    // Real-world scenario: this would be a backend API / database.
+    // For this task, we simulate a secure credential store.
+    // ------------------------------
+    const usersDatabase = [
+        { id: 1, username: "admin@system.com", password: "admin123", role: "Administrator", fullName: "System Admin" },
+        { id: 2, username: "emma.wilson@example.com", password: "emma2024", role: "Manager", fullName: "Emma Wilson" },
+        { id: 3, username: "james.miller", password: "james@789", role: "Staff", fullName: "James Miller" },
+        { id: 4, username: "guest@demo.com", password: "guestpass", role: "Guest", fullName: "Guest User" },
+        { id: 5, username: "sarah.connor", password: "skynet2025", role: "Engineer", fullName: "Sarah Connor" },
+        { id: 6, username: "michael.scott", password: "dundermifflin", role: "Regional Manager", fullName: "Michael Scott" }
+    ];
+
+    // Helper: find user by username (case-insensitive match for convenience)
+    function findUserByUsername(inputUsername) {
+        if (!inputUsername) return null;
+        return usersDatabase.find(user => user.username.toLowerCase() === inputUsername.toLowerCase().trim());
+    }
+
+    // DOM elements
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const usernameErrorDiv = document.getElementById('usernameError');
+    const passwordErrorDiv = document.getElementById('passwordError');
+    const messageArea = document.getElementById('messageArea');
+    const loginBtn = document.getElementById('loginBtn');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+
+    // Helper to show dynamic global message (error/success)
+    function showMessage(type, text) {
+        messageArea.innerHTML = '';
+        const msgDiv = document.createElement('div');
+        if (type === 'error') {
+            msgDiv.className = 'dynamic-error';
+            msgDiv.innerHTML = `<span>❌</span> ${text}`;
+        } else if (type === 'success') {
+            msgDiv.className = 'success-message';
+            msgDiv.innerHTML = `<span>✅</span> ${text}`;
+        }
+        messageArea.appendChild(msgDiv);
+        
+        // Auto hide success after 3 seconds (but not errors to keep feedback)
+        if (type === 'success') {
+            setTimeout(() => {
+                if (messageArea.firstChild === msgDiv) {
+                    msgDiv.style.opacity = '0';
+                    setTimeout(() => {
+                        if (messageArea.firstChild === msgDiv) messageArea.innerHTML = '';
+                    }, 300);
+                }
+            }, 3000);
+        }
+    }
+
+    // Clear field-specific errors
+    function clearFieldErrors() {
+        usernameErrorDiv.style.display = 'none';
+        usernameErrorDiv.innerHTML = '';
+        passwordErrorDiv.style.display = 'none';
+        passwordErrorDiv.innerHTML = '';
+        usernameInput.classList.remove('error-input');
+        passwordInput.classList.remove('error-input');
+    }
+
+    // Show specific field error
+    function showFieldError(field, message) {
+        if (field === 'username') {
+            usernameErrorDiv.innerHTML = message;
+            usernameErrorDiv.style.display = 'flex';
+            usernameInput.classList.add('error-input');
+            usernameInput.classList.add('shake-animation');
+            setTimeout(() => usernameInput.classList.remove('shake-animation'), 400);
+        } else if (field === 'password') {
+            passwordErrorDiv.innerHTML = message;
+            passwordErrorDiv.style.display = 'flex';
+            passwordInput.classList.add('error-input');
+            passwordInput.classList.add('shake-animation');
+            setTimeout(() => passwordInput.classList.remove('shake-animation'), 400);
+        }
+    }
+
+    // Validate inputs (frontend validation)
+    function validateInputs(username, password) {
+        let isValid = true;
+        clearFieldErrors();
+
+        // Username validation: not empty
+        if (!username || username.trim() === '') {
+            showFieldError('username', 'Username or email is required');
+            isValid = false;
+        } else if (username.length < 3) {
+            showFieldError('username', 'Username must be at least 3 characters');
+            isValid = false;
+        }
+
+        // Password validation: not empty
+        if (!password || password.trim() === '') {
+            showFieldError('password', 'Password cannot be empty');
+            isValid = false;
+        } else if (password.length < 4) {
+            showFieldError('password', 'Password must be at least 4 characters');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    // Authenticate against simulated database
+    function authenticateUser(username, password) {
+        const user = findUserByUsername(username);
+        if (!user) {
+            return { success: false, message: '❌ Account not found. Invalid username or email.' };
+        }
+        
+        // Check password match (plain-text simulation for demo - in real system use hashed passwords)
+        if (user.password !== password) {
+            return { success: false, message: '🔐 Incorrect password. Please try again.' };
+        }
+        
+        // Successful login
+        return { 
+            success: true, 
+            message: `✨ Welcome back, ${user.fullName}! (${user.role})`,
+            user: { id: user.id, username: user.username, role: user.role, fullName: user.fullName }
+        };
+    }
+
+    // Main login handler
+    async function handleLogin(event) {
+        if (event) event.preventDefault();
+        
+        // Clear any previous global messages
+        messageArea.innerHTML = '';
+        
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        
+        // Step 1: Client-side validation
+        if (!validateInputs(username, password)) {
+            // show additional hint in global area for better UX
+            showMessage('error', 'Please fix the errors highlighted above.');
+            return;
+        }
+        
+        // Simulate loading state on button
+        const originalBtnText = loginBtn.innerText;
+        loginBtn.innerText = '⏳ Authenticating...';
+        loginBtn.disabled = true;
+        
+        // Simulate network delay (realistic DB check)
+        setTimeout(() => {
+            // Step 2: Check credentials from database (simulated)
+            const authResult = authenticateUser(username, password);
+            
+            if (authResult.success) {
+                // success case: show welcome & redirect simulation
+                showMessage('success', authResult.message);
+                clearFieldErrors();
+                // optional: reset form fields
+                usernameInput.classList.remove('error-input');
+                passwordInput.classList.remove('error-input');
+                
+                // REAL-TIME USAGE: In real application, redirect or set auth token.
+                // For demonstration, we simulate a logged-in dashboard preview.
+                setTimeout(() => {
+                    // Display a fancy success overlay simulation (but keep it gentle)
+                    const successOverlay = document.createElement('div');
+                    successOverlay.style.position = 'fixed';
+                    successOverlay.style.top = '20px';
+                    successOverlay.style.right = '20px';
+                    successOverlay.style.left = '20px';
+                    successOverlay.style.maxWidth = '400px';
+                    successOverlay.style.margin = '0 auto';
+                    successOverlay.style.background = '#10b981';
+                    successOverlay.style.color = 'white';
+                    successOverlay.style.padding = '16px 24px';
+                    successOverlay.style.borderRadius = '60px';
+                    successOverlay.style.textAlign = 'center';
+                    successOverlay.style.fontWeight = 'bold';
+                    successOverlay.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+                    successOverlay.style.zIndex = '1000';
+                    successOverlay.innerHTML = `🎉 ${authResult.message}<br><span style="font-size:12px;">Redirecting to dashboard...</span>`;
+                    document.body.appendChild(successOverlay);
+                    
+                    // Simulate redirect after 2 seconds
+                    setTimeout(() => {
+                        alert(`✅ LOGIN SUCCESSFUL!\nWelcome ${authResult.user.fullName} (${authResult.user.role})\nIn real app, you'd be redirected to dashboard.`);
+                        successOverlay.remove();
+                        // Reset form for next demo purposes
+                        usernameInput.value = '';
+                        passwordInput.value = '';
+                        loginBtn.innerText = originalBtnText;
+                        loginBtn.disabled = false;
+                        messageArea.innerHTML = '';
+                        clearFieldErrors();
+                    }, 1800);
+                }, 100);
+            } else {
+                // authentication failed: show dynamic error message
+                showMessage('error', authResult.message);
+                // Additional shake effect on form
+                const card = document.querySelector('.login-card');
+                card.classList.add('shake-animation');
+                setTimeout(() => card.classList.remove('shake-animation'), 500);
+                // if error related to username not found, highlight username
+                if (authResult.message.includes('Account not found')) {
+                    showFieldError('username', authResult.message);
+                } else if (authResult.message.includes('Incorrect password')) {
+                    showFieldError('password', 'Wrong password. Check credentials.');
+                    passwordInput.value = '';  // clear password for security (UX)
+                }
+                loginBtn.innerText = originalBtnText;
+                loginBtn.disabled = false;
+            }
+        }, 600); // simulate realistic async DB call
+    }
+
+    // Toggle password visibility (UX enhancement)
+    function togglePasswordVisibility() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePasswordBtn.textContent = type === 'password' ? '👁️' : '🙈';
+    }
+
+    // Real-time inline validation as user types (optional dynamic feedback)
+    function setupLiveValidation() {
+        usernameInput.addEventListener('input', function() {
+            if (usernameErrorDiv.style.display === 'flex') {
+                usernameErrorDiv.style.display = 'none';
+                usernameInput.classList.remove('error-input');
+            }
+            // hide global error on typing
+            if (messageArea.children.length > 0 && messageArea.children[0]?.classList?.contains('dynamic-error')) {
+                // optional but good UX: clear global error when typing
+                // we won't clear global aggressively but we can remove after 1s? Better to keep consistent
+            }
+        });
+        
+        passwordInput.addEventListener('input', function() {
+            if (passwordErrorDiv.style.display === 'flex') {
+                passwordErrorDiv.style.display = 'none';
+                passwordInput.classList.remove('error-input');
+            }
+        });
+    }
+
+    // Additional demo: "Enter" key submission
+    function setupEnterKey() {
+        const inputs = [usernameInput, passwordInput];
+        inputs.forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleLogin(e);
+                }
+            });
+        });
+    }
+
+    // Also provide a neat credential filler for testing (but not mandatory)
+    // For better demonstration: quick fill for demo credentials on click (just usability)
+    function addDemoFillers() {
+        const demoItems = document.querySelectorAll('.cred-item');
+        // Adding click-to-fill functionality on credential items
+        demoItems.forEach(item => {
+            item.style.cursor = 'pointer';
+            item.title = 'Click to fill this credential';
+            item.addEventListener('click', (e) => {
+                const text = item.innerText;
+                if (text.includes('@') || text.includes('.') || text.length > 3) {
+                    // it's likely username or email
+                    if (text !== '/' && !text.includes('/')) {
+                        const parentRow = item.closest('.cred-row');
+                        const allParts = parentRow?.innerText.split('/') || [];
+                        let possiblePwd = '';
+                        if (allParts.length > 1 && item.nextSibling) {
+                            // extract password from sibling span
+                            const nextSpan = item.nextElementSibling;
+                            if (nextSpan && nextSpan.classList.contains('cred-item')) {
+                                possiblePwd = nextSpan.innerText;
+                            }
+                        } else {
+                            // fallback: try to find password manually
+                            const allSpans = document.querySelectorAll('.cred-item');
+                            const idx = Array.from(allSpans).indexOf(item);
+                            if (idx !== -1 && allSpans[idx + 1]) possiblePwd = allSpans[idx + 1].innerText;
+                        }
+                        usernameInput.value = text;
+                        if (possiblePwd && possiblePwd !== '/' && !possiblePwd.includes('/')) {
+                            passwordInput.value = possiblePwd;
+                        }
+                        // trigger clear errors
+                        clearFieldErrors();
+                        showMessage('success', '✨ Demo credentials filled. Click Sign In.');
+                    }
+                } else if (item.innerText !== '/' && !item.innerText.includes('@') && !item.innerText.includes('.')) {
+                    // could be password field, fill password only if adjacent username logic not triggered
+                    const siblings = Array.from(item.parentElement.children);
+                    const maybeUserSpan = siblings.find(s => s !== item && s.classList?.contains('cred-item') && (s.innerText.includes('@') || s.innerText.includes('.') || s.innerText.length > 4));
+                    if (maybeUserSpan) usernameInput.value = maybeUserSpan.innerText;
+                    passwordInput.value = item.innerText;
+                    clearFieldErrors();
+                    showMessage('success', '🔑 Credentials loaded. Press Sign In.');
+                }
+            });
+        });
+    }
+
+    // Initialize event listeners
+    function init() {
+        loginBtn.addEventListener('click', handleLogin);
+        togglePasswordBtn.addEventListener('click', togglePasswordVisibility);
+        setupLiveValidation();
+        setupEnterKey();
+        addDemoFillers();
+        
+        // extra: focus effect and initial message placeholder (no intrusive)
+        console.log('Login System Ready — Simulated DB active with validation');
+    }
+    
+    init();
+</script>
+</body>
+</html>
