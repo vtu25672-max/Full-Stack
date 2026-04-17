@@ -1,0 +1,63 @@
+package com.gateway;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@SpringBootApplication
+@EnableDiscoveryClient
+public class ApiGatewayApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ApiGatewayApplication.class, args);
+        System.out.println("\n✅ API GATEWAY STARTED on http://localhost:8080");
+        System.out.println("It will route requests using Eureka + Load Balancing");
+    }
+
+    // Route Configuration with Load Balancing
+    @Bean
+    public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
+        return builder.routes()
+                // Route for Product Service - Load Balanced
+                .route("product-service", r -> r.path("/api/products/**")
+                        .uri("lb://PRODUCT-SERVICE"))   // 'lb://' enables load balancing
+
+                // Route for Order Service - Load Balanced
+                .route("order-service", r -> r.path("/api/orders/**")
+                        .uri("lb://ORDER-SERVICE"))
+
+                // Optional: Health check route
+                .route("gateway-health", r -> r.path("/gateway/health")
+                        .uri("forward:/health"))
+
+                .build();
+    }
+}
+
+// Simple Health Check Controller
+@RestController
+class GatewayController {
+
+    @GetMapping("/health")
+    public String health() {
+        return "API Gateway is running successfully with Load Balancing!";
+    }
+
+    @GetMapping("/")
+    public String welcome() {
+        return """
+                <h1>Welcome to API Gateway (Task 16)</h1>
+                <p>Routes:</p>
+                <ul>
+                    <li><a href="/api/products">Product Service</a></li>
+                    <li><a href="/api/orders">Order Service</a></li>
+                </ul>
+                <p>Eureka Dashboard: <a href="http://localhost:8761">http://localhost:8761</a></p>
+                """;
+    }
+}
