@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Customer Feedback Form</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px 40px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 25px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #444;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #667eea;
+      outline: none;
+      box-shadow: 0 0 8px rgba(102, 126, 234, 0.3);
+    }
+    .highlight {
+      border-color: #f39c12 !important;
+      background-color: #fff8e1;
+    }
+    .error {
+      color: #e74c3c;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #5a6fd8;
+      transform: translateY(-2px);
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    .success-message {
+      display: none;
+      background: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Customer Feedback Form</h2>
+    
+    <form id="feedbackForm">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" placeholder="Enter your name" required />
+        <div class="error" id="nameError"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="your@email.com" required />
+        <div class="error" id="emailError"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="rating">Rating (1-5)</label>
+        <select id="rating" required>
+          <option value="">Select Rating</option>
+          <option value="5">5 - Excellent</option>
+          <option value="4">4 - Very Good</option>
+          <option value="3">3 - Good</option>
+          <option value="2">2 - Fair</option>
+          <option value="1">1 - Poor</option>
+        </select>
+        <div class="error" id="ratingError"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="comments">Your Feedback / Comments</label>
+        <textarea id="comments" rows="5" placeholder="Please share your thoughts..." required></textarea>
+        <div class="error" id="commentsError"></div>
+      </div>
+
+      <button type="button" id="submitBtn" ondblclick="submitForm()">
+        Submit Feedback (Double Click)
+      </button>
+    </form>
+
+    <div class="success-message" id="successMsg">
+      ✅ Thank you! Your feedback has been submitted successfully.
+    </div>
+  </div>
+
+  <script>
+    // Reusable Validation Functions
+    function validateName(name) {
+      return name.trim().length >= 3;
+    }
+
+    function validateEmail(email) {
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
+    }
+
+    function validateRating(rating) {
+      return rating !== "";
+    }
+
+    function validateComments(comments) {
+      return comments.trim().length >= 10;
+    }
+
+    // Real-time Validation on Keypress + Blur
+    function setupValidation(inputId, errorId, validationFn, errorMessage) {
+      const input = document.getElementById(inputId);
+      const error = document.getElementById(errorId);
+
+      // On keypress (live validation)
+      input.addEventListener('keypress', () => {
+        if (validationFn(input.value)) {
+          error.textContent = "";
+          input.classList.remove('highlight');
+        }
+      });
+
+      // On blur (final check)
+      input.addEventListener('blur', () => {
+        if (!validationFn(input.value)) {
+          error.textContent = errorMessage;
+          input.classList.add('highlight');
+        } else {
+          error.textContent = "";
+          input.classList.remove('highlight');
+        }
+      });
+    }
+
+    // Mouse Hover Highlight Effect
+    function setupHoverHighlight(fieldIds) {
+      fieldIds.forEach(id => {
+        const field = document.getElementById(id);
+        field.addEventListener('mouseenter', () => {
+          field.classList.add('highlight');
+        });
+        field.addEventListener('mouseleave', () => {
+          if (!field.classList.contains('error-border')) {
+            field.classList.remove('highlight');
+          }
+        });
+      });
+    }
+
+    // Main Form Submission (Double Click)
+    function submitForm() {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const rating = document.getElementById('rating').value;
+      const comments = document.getElementById('comments').value.trim();
+
+      let isValid = true;
+
+      // Final Validation
+      if (!validateName(name)) {
+        document.getElementById('nameError').textContent = "Name must be at least 3 characters";
+        isValid = false;
+      }
+      if (!validateEmail(email)) {
+        document.getElementById('emailError').textContent = "Please enter a valid email address";
+        isValid = false;
+      }
+      if (!validateRating(rating)) {
+        document.getElementById('ratingError').textContent = "Please select a rating";
+        isValid = false;
+      }
+      if (!validateComments(comments)) {
+        document.getElementById('commentsError').textContent = "Feedback must be at least 10 characters";
+        isValid = false;
+      }
+
+      if (isValid) {
+        // Show success message
+        document.getElementById('successMsg').style.display = 'block';
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          document.getElementById('feedbackForm').reset();
+          document.getElementById('successMsg').style.display = 'none';
+          document.querySelectorAll('.error').forEach(el => el.textContent = "");
+        }, 3000);
+
+        console.log("Feedback Submitted:", { name, email, rating, comments });
+      } else {
+        alert("Please fix the errors in the form before submitting.");
+      }
+    }
+
+    // Initialize everything when page loads
+    window.onload = function() {
+      // Setup real-time validation
+      setupValidation('name', 'nameError', validateName, "Name must be at least 3 characters");
+      setupValidation('email', 'emailError', validateEmail, "Please enter a valid email address");
+      setupValidation('rating', 'ratingError', validateRating, "Please select a rating");
+      setupValidation('comments', 'commentsError', validateComments, "Feedback must be at least 10 characters");
+
+      // Setup hover effects
+      setupHoverHighlight(['name', 'email', 'rating', 'comments']);
+
+      console.log("✅ Interactive Feedback Form Loaded Successfully");
+    };
+  </script>
+
+</body>
+</html>
