@@ -1,0 +1,170 @@
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+// ====================== Employee Model ======================
+class Employee {
+    private int id;
+    private String name;
+    private String department;
+    private double salary;
+
+    public Employee() {}
+
+    public Employee(int id, String name, String department, double salary) {
+        this.id = id;
+        this.name = name;
+        this.department = department;
+        this.salary = salary;
+    }
+
+    // Getters and Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public double getSalary() { return salary; }
+    public void setSalary(double salary) { this.salary = salary; }
+
+    @Override
+    public String toString() {
+        return String.format("Employee{id=%d, name='%s', department='%s', salary=%.2f}",
+                id, name, department, salary);
+    }
+}
+
+// ====================== EmployeeRepository ======================
+@Component
+class EmployeeRepository {
+    private final List<Employee> employees = new ArrayList<>();
+    private int nextId = 101;
+
+    public void addEmployee(Employee emp) {
+        emp.setId(nextId++);
+        employees.add(emp);
+        System.out.println("✅ Employee added: " + emp.getName());
+    }
+
+    public List<Employee> getAllEmployees() {
+        return new ArrayList<>(employees);
+    }
+
+    public Optional<Employee> findById(int id) {
+        return employees.stream()
+                .filter(e -> e.getId() == id)
+                .findFirst();
+    }
+
+    public boolean deleteById(int id) {
+        return employees.removeIf(e -> e.getId() == id);
+    }
+}
+
+// ====================== EmployeeService ======================
+@Component
+class EmployeeService {
+
+    private final EmployeeRepository employeeRepository;
+
+    @Autowired
+    public EmployeeService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
+
+    public void addNewEmployee(String name, String department, double salary) {
+        Employee emp = new Employee(0, name, department, salary);
+        employeeRepository.addEmployee(emp);
+    }
+
+    public void displayAllEmployees() {
+        List<Employee> employees = employeeRepository.getAllEmployees();
+        if (employees.isEmpty()) {
+            System.out.println("No employees found.");
+            return;
+        }
+        System.out.println("\n=== All Employees ===");
+        employees.forEach(System.out::println);
+    }
+
+    public void findEmployee(int id) {
+        Optional<Employee> emp = employeeRepository.findById(id);
+        if (emp.isPresent()) {
+            System.out.println("Employee Found: " + emp.get());
+        } else {
+            System.out.println("❌ Employee with ID " + id + " not found.");
+        }
+    }
+
+    public void deleteEmployee(int id) {
+        boolean deleted = employeeRepository.deleteById(id);
+        if (deleted) {
+            System.out.println("✅ Employee with ID " + id + " deleted successfully.");
+        } else {
+            System.out.println("❌ Employee with ID " + id + " not found.");
+        }
+    }
+}
+
+// ====================== Spring Configuration ======================
+@Configuration
+@ComponentScan(basePackages = "com.employee")  // Even though single file, we keep it
+class AppConfig {
+}
+
+// ====================== Main Application ======================
+public class EmployeeManagementApp {
+
+    public static void main(String[] args) {
+        System.out.println("=== Task 8: Spring Core Employee Management System ===\n");
+
+        // Create Spring Application Context (implements BeanFactory)
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
+
+        // Get BeanFactory
+        BeanFactory beanFactory = context;
+
+        // Retrieve EmployeeService bean using BeanFactory
+        EmployeeService service = beanFactory.getBean(EmployeeService.class);
+
+        // === Perform Operations ===
+        System.out.println("Adding Employees...\n");
+
+        service.addNewEmployee("Revanth Kumar", "Engineering", 85000.00);
+        service.addNewEmployee("Priya Sharma", "Human Resources", 65000.00);
+        service.addNewEmployee("Arjun Reddy", "Finance", 92000.00);
+        service.addNewEmployee("Sneha Patel", "Marketing", 72000.00);
+
+        // Display all employees
+        service.displayAllEmployees();
+
+        // Find specific employee
+        service.findEmployee(102);
+
+        // Delete an employee
+        service.deleteEmployee(101);
+
+        // Show updated list
+        service.displayAllEmployees();
+
+        System.out.println("\n=== Demonstration Complete ===");
+        System.out.println("✅ Inversion of Control & Dependency Injection demonstrated using:");
+        System.out.println("   • @Component");
+        System.out.println("   • @Autowired (Constructor Injection)");
+        System.out.println("   • BeanFactory");
+
+        // Close the context
+        context.close();
+    }
+}
