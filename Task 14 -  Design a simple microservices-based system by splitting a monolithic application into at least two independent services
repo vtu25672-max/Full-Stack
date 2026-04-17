@@ -1,0 +1,225 @@
+1. ProductServiceApplication.java
+package com.product;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import java.util.List;
+import java.util.Optional;
+
+// ====================== Entity ======================
+@Entity
+@Table(name = "products")
+class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Name is required")
+    private String name;
+
+    private String description;
+
+    @Positive(message = "Price must be positive")
+    private double price;
+
+    @PositiveOrZero
+    private int stock;
+
+    // Getters & Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+    public int getStock() { return stock; }
+    public void setStock(int stock) { this.stock = stock; }
+}
+
+// ====================== Repository ======================
+interface ProductRepository extends JpaRepository<Product, Long> { }
+
+// ====================== Service ======================
+@Service
+class ProductServiceLayer {
+    @Autowired
+    private ProductRepository repo;
+
+    public List<Product> getAll() { return repo.findAll(); }
+    public Optional<Product> getById(Long id) { return repo.findById(id); }
+    public Product save(Product p) { return repo.save(p); }
+    public void delete(Long id) { repo.deleteById(id); }
+}
+
+// ====================== Controller ======================
+@RestController
+@RequestMapping("/api/products")
+class ProductController {
+    @Autowired
+    private ProductServiceLayer service;
+
+    @GetMapping
+    public List<Product> getAll() { return service.getAll(); }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getById(@PathVariable Long id) {
+        return service.getById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<Product> create(@RequestBody Product product) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(product));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> update(@PathVariable Long id, @RequestBody Product product) {
+        return service.getById(id)
+                .map(existing -> {
+                    product.setId(id);
+                    return ResponseEntity.ok(service.save(product));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+// ====================== Main Application ======================
+@SpringBootApplication
+public class ProductServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ProductServiceApplication.class, args);
+        System.out.println("✅ Product Service running on http://localhost:8081");
+    }
+}
+
+2. OrderServiceApplication.java
+package com.order;
+
+import jakarta.persistence.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+
+// ====================== Entity ======================
+@Entity
+@Table(name = "orders")
+class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long productId;
+    private int quantity;
+    private double totalPrice;
+
+    // Getters & Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public double getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
+}
+
+// ====================== Repository ======================
+interface OrderRepository extends JpaRepository<Order, Long> { }
+
+// ====================== Service ======================
+@Service
+class OrderServiceLayer {
+    @Autowired
+    private OrderRepository repo;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    public List<Order> getAll() { return repo.findAll(); }
+
+    public Order createOrder(Order order) {
+        // Call Product Service to validate and get price (loose coupling via REST)
+        String productUrl = "http://localhost:8081/api/products/" + order.getProductId();
+        ResponseEntity<Product> response = restTemplate.getForEntity(productUrl, Product.class);
+
+        if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
+            throw new RuntimeException("Product not found");
+        }
+
+        Product product = response.getBody();
+        if (product.getStock() < order.getQuantity()) {
+            throw new RuntimeException("Insufficient stock");
+        }
+
+        order.setTotalPrice(product.getPrice() * order.getQuantity());
+        return repo.save(order);
+    }
+}
+
+// Simple Product DTO for deserialization
+class Product {
+    private Long id;
+    private String name;
+    private double price;
+    private int stock;
+    // getters omitted for brevity
+    public double getPrice() { return price; }
+    public int getStock() { return stock; }
+}
+
+// ====================== Controller ======================
+@RestController
+@RequestMapping("/api/orders")
+class OrderController {
+    @Autowired
+    private OrderServiceLayer service;
+
+    @GetMapping
+    public List<Order> getAll() { return service.getAll(); }
+
+    @PostMapping
+    public ResponseEntity<Order> create(@RequestBody Order order) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.createOrder(order));
+    }
+}
+
+// ====================== Main Application ======================
+@SpringBootApplication
+public class OrderServiceApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(OrderServiceApplication.class, args);
+        System.out.println("✅ Order Service running on http://localhost:8082");
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
