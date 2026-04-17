@@ -1,0 +1,151 @@
+package com.order;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import jakarta.persistence.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+// ====================== Order Entity ======================
+@Entity
+@Table(name = "orders")
+class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private Long productId;
+    private int quantity;
+    private double totalPrice;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public double getTotalPrice() { return totalPrice; }
+    public void setTotalPrice(double totalPrice) { this.totalPrice = totalPrice; }
+}
+
+interface OrderRepository extends JpaRepository<Order, Long> { }
+
+// ====================== Feign Client Interface ======================
+@FeignClient(
+    name = "PRODUCT-SERVICE",           // Service name registered in Eureka
+    fallback = ProductClientFallback.class   // Fallback for graceful degradation
+)
+interface ProductClient {
+    @GetMapping("/api/products/{id}")
+    ProductDTO getProductById(@PathVariable("id") Long id);
+}
+
+// ====================== Fallback Implementation ======================
+class ProductClientFallback implements ProductClient {
+    @Override
+    public ProductDTO getProductById(Long id) {
+        // Graceful fallback when Product Service is down
+        ProductDTO fallback = new ProductDTO();
+        fallback.setPrice(0.0);
+        fallback.setStock(0);
+        System.out.println("⚠️ Product Service is unavailable. Using fallback for product ID: " + id);
+        return fallback;
+    }
+}
+
+// ====================== DTO ======================
+class ProductDTO {
+    private double price;
+    private int stock;
+
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+
+    public int getStock() { return stock; }
+    public void setStock(int stock) { this.stock = stock; }
+}
+
+// ====================== Service Layer with Circuit Breaker ======================
+@Service
+class OrderService {
+
+    @Autowired
+    private OrderRepository repo;
+
+    @Autowired
+    private ProductClient productClient;
+
+    public List<Order> getAllOrders() {
+        return repo.findAll();
+    }
+
+    @CircuitBreaker(name = "productService", fallbackMethod = "createOrderFallback")
+    public Order createOrder(Order order) {
+        // Inter-service call using Feign Client
+        ProductDTO product = productClient.getProductById(order.getProductId());
+
+        if (product.getStock() < order.getQuantity()) {
+            throw new RuntimeException("Insufficient stock for product ID: " + order.getProductId());
+        }
+
+        order.setTotalPrice(product.getPrice() * order.getQuantity());
+        return repo.save(order);
+    }
+
+    // Fallback method for Circuit Breaker
+    public Order createOrderFallback(Order order, Throwable throwable) {
+        System.out.println("❌ Circuit Breaker triggered! Reason: " + throwable.getMessage());
+        Order fallbackOrder = new Order();
+        fallbackOrder.setProductId(order.getProductId());
+        fallbackOrder.setQuantity(order.getQuantity());
+        fallbackOrder.setTotalPrice(0.0); // or some default logic
+        return repo.save(fallbackOrder);   // Still save the order with fallback values
+    }
+}
+
+// ====================== Controller ======================
+@RestController
+@RequestMapping("/api/orders")
+class OrderController {
+
+    @Autowired
+    private OrderService service;
+
+    @GetMapping
+    public List<Order> getAll() {
+        return service.getAllOrders();
+    }
+
+    @PostMapping
+    public ResponseEntity<Order> createOrder(@RequestBody Order order) {
+        try {
+            Order saved = service.createOrder(order);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(null); // or custom error response
+        }
+    }
+}
+
+// ====================== Main Application ======================
+@SpringBootApplication
+@EnableDiscoveryClient
+@EnableFeignClients   // Enables Feign Clients
+public class OrderServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(OrderServiceApplication.class, args);
+        System.out.println("\n✅ ORDER SERVICE STARTED (with Feign Client + Circuit Breaker)");
+        System.out.println("It consumes Product Service gracefully using Feign.");
+    }
+}
