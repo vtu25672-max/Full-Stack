@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Student Dashboard</title>
+    <style>
+        * { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+        body { background: #f3f4f6; margin: 0; padding: 20px; }
+        .card { max-width: 1300px; margin: 0 auto; background: white; border-radius: 24px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { margin: 0 0 6px 0; font-size: 1.6rem; }
+        .flex { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 20px 0; }
+        label { font-size: 12px; font-weight: 600; color: #4b5563; display: block; margin-bottom: 4px; }
+        select, button { padding: 8px 16px; border-radius: 40px; border: 1px solid #d1d5db; background: white; font-size: 14px; cursor: pointer; }
+        button { background: #2563eb; color: white; border: none; font-weight: 500; }
+        button:hover { background: #1d4ed8; }
+        .stats { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; padding: 12px 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+        .stat-badge { background: #eef2ff; padding: 6px 14px; border-radius: 40px; font-size: 14px; font-weight: 500; }
+        .stat-badge span { font-weight: 700; color: #2563eb; margin-left: 6px; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; cursor: pointer; }
+        th:hover { background: #f3f4f6; }
+        .dept-tag { background: #e0e7ff; padding: 4px 10px; border-radius: 30px; font-size: 13px; display: inline-block; }
+        .empty { text-align: center; padding: 40px; color: #6b7280; }
+        .small-note { font-size: 12px; color: #6c7a91; margin-top: 16px; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>📚 Student Records</h2>
+    <div class="flex">
+        <div>
+            <label>🏛️ FILTER BY DEPT</label>
+            <select id="deptFilter"></select>
+        </div>
+        <div>
+            <label>🔀 SORT BY</label>
+            <select id="sortBy">
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="date_asc">Date (Oldest first)</option>
+                <option value="date_desc">Date (Newest first)</option>
+            </select>
+        </div>
+        <div>
+            <label>⚡</label>
+            <button id="applyBtn">Apply</button>
+            <button id="resetBtn" style="background:#e5e7eb; color:#1f2937; margin-left:8px;">Reset</button>
+        </div>
+    </div>
+
+    <!-- department counts panel -->
+    <div id="statsPanel" class="stats"></div>
+
+    <!-- records table -->
+    <div style="overflow-x: auto;">
+        <table id="studentTable">
+            <thead>
+                <tr><th data-sort="name">📛 Name</th><th data-sort="dept">🏢 Department</th><th data-sort="date">📅 Enrollment Date</th></tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="small-note">✨ Click column headers to sort • Filter by department updates counts</div>
+</div>
+
+<script>
+    // ----- DATA (compact but realistic) -----
+    const students = [
+        { name: "Emma Richardson", dept: "Computer Science", date: "2023-09-01" },
+        { name: "Liam Chen", dept: "Electrical Engineering", date: "2022-08-15" },
+        { name: "Sophia Martinez", dept: "Business", date: "2024-01-10" },
+        { name: "Noah Williams", dept: "Computer Science", date: "2021-11-03" },
+        { name: "Olivia Johnson", dept: "Mechanical", date: "2023-03-22" },
+        { name: "Mason Brown", dept: "Electrical Engineering", date: "2024-02-28" },
+        { name: "Isabella Garcia", dept: "Business", date: "2022-09-12" },
+        { name: "Ethan Davis", dept: "Computer Science", date: "2023-12-05" },
+        { name: "Ava Wilson", dept: "Mechanical", date: "2021-05-19" },
+        { name: "James Rodriguez", dept: "Civil", date: "2024-03-01" },
+        { name: "Mia Anderson", dept: "Computer Science", date: "2024-04-17" },
+        { name: "Benjamin Lee", dept: "Business", date: "2022-10-30" }
+    ];
+
+    let currentDept = "ALL";
+    let currentSort = "name_asc";
+
+    // helpers
+    const getUniqueDepts = () => [...new Set(students.map(s => s.dept))].sort();
+    
+    // filter + sort engine
+    function getFilteredSorted() {
+        let filtered = currentDept === "ALL" ? [...students] : students.filter(s => s.dept === currentDept);
+        // sort
+        switch(currentSort) {
+            case "name_asc": filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+            case "name_desc": filtered.sort((a,b) => b.name.localeCompare(a.name)); break;
+            case "date_asc": filtered.sort((a,b) => new Date(a.date) - new Date(b.date)); break;
+            case "date_desc": filtered.sort((a,b) => new Date(b.date) - new Date(a.date)); break;
+            default: filtered.sort((a,b) => a.name.localeCompare(b.name));
+        }
+        return filtered;
+    }
+
+    // render department counts (based on current filtered data)
+    function renderStats(data) {
+        const counts = new Map();
+        data.forEach(s => counts.set(s.dept, (counts.get(s.dept) || 0) + 1));
+        const container = document.getElementById("statsPanel");
+        if (!container) return;
+        container.innerHTML = "";
+        // show each department count from the current filtered set
+        const allDepts = getUniqueDepts();
+        allDepts.forEach(dept => {
+            const cnt = counts.get(dept) || 0;
+            container.innerHTML += `<div class="stat-badge">${dept} <span>${cnt}</span></div>`;
+        });
+        // optional total row
+        container.innerHTML += `<div class="stat-badge" style="background:#e6f0ff;">📌 Total <span>${data.length}</span></div>`;
+    }
+
+    // render table
+    function renderTable(data) {
+        const tbody = document.getElementById("tableBody");
+        if (!tbody) return;
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="empty">🚫 No students match this department</td></tr>`;
+            return;
+        }
+        let html = "";
+        for (let s of data) {
+            const formattedDate = new Date(s.date).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+            html += `<tr>
+                        <td style="font-weight:500">${escapeHtml(s.name)}</td>
+                        <td><span class="dept-tag">${escapeHtml(s.dept)}</span></td>
+                        <td>${formattedDate} <span style="font-size:11px; color:#6c7a91;">(${s.date})</span></td>
+                     </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+    
+    function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+    // refresh everything: filter + sort -> update table + stats
+    function refresh() {
+        const filteredSorted = getFilteredSorted();
+        renderTable(filteredSorted);
+        renderStats(filteredSorted);
+    }
+
+    // populate filter dropdown
+    function updateFilterDropdown() {
+        const select = document.getElementById("deptFilter");
+        if (!select) return;
+        const depts = getUniqueDepts();
+        let options = `<option value="ALL">All Departments (${students.length})</option>`;
+        depts.forEach(d => { options += `<option value="${d}">${d}</option>`; });
+        select.innerHTML = options;
+        select.value = currentDept;
+    }
+
+    // event handlers
+    function applyChanges() {
+        currentDept = document.getElementById("deptFilter").value;
+        currentSort = document.getElementById("sortBy").value;
+        refresh();
+    }
+    function resetAll() {
+        currentDept = "ALL";
+        currentSort = "name_asc";
+        document.getElementById("deptFilter").value = "ALL";
+        document.getElementById("sortBy").value = "name_asc";
+        refresh();
+    }
+
+    // column header click sorting (extra interactive)
+    function initHeaderSort() {
+        const headers = document.querySelectorAll("#studentTable th");
+        headers.forEach(th => {
+            th.addEventListener("click", () => {
+                const key = th.getAttribute("data-sort");
+                if (key === "name") {
+                    currentSort = (currentSort === "name_asc") ? "name_desc" : "name_asc";
+                } else if (key === "date") {
+                    currentSort = (currentSort === "date_asc") ? "date_desc" : "date_asc";
+                } else if (key === "dept") {
+                    // custom department sort: we'll add temp dept sorting logic
+                    if (currentSort === "dept_asc") currentSort = "dept_desc";
+                    else if (currentSort === "dept_desc") currentSort = "dept_asc";
+                    else currentSort = "dept_asc";
+                    // manually handle sorting because default options don't have dept sort, but we integrate
+                }
+                // sync dropdown value if new sort type matches known pattern, else set fallback
+                const sortSelect = document.getElementById("sortBy");
+                if (currentSort === "name_asc" || currentSort === "name_desc" || currentSort === "date_asc" || currentSort === "date_desc") {
+                    sortSelect.value = currentSort;
+                } else if (currentSort === "dept_asc" || currentSort === "dept_desc") {
+                    // keep dropdown consistent (add placeholder)
+                    if (![...sortSelect.options].some(o => o.value === currentSort)) {
+                        // add temporary options for dept sorting if missing
+                        const opt1 = document.createElement("option"); opt1.value = "dept_asc"; opt1.textContent = "Department (A-Z)";
+                        const opt2 = document.createElement("option"); opt2.value = "dept_desc"; opt2.textContent = "Department (Z-A)";
+                        if (![...sortSelect.options].some(o => o.value === "dept_asc")) sortSelect.add(opt1);
+                        if (![...sortSelect.options].some(o => o.value === "dept_desc")) sortSelect.add(opt2);
+                    }
+                    sortSelect.value = currentSort;
+                }
+                refresh();
+            });
+        });
+    }
+    
+    // override getFilteredSorted to support department sorting as well
+    const originalGet = getFilteredSorted;
+    window.getFilteredSorted = function() {
+        let filtered = currentDept === "ALL" ? [...students] : students.filter(s => s.dept === currentDept);
+        switch(currentSort) {
+            case "name_asc": filtered.sort((a,b) => a.name.localeCompare(b.name)); break;
+            case "name_desc": filtered.sort((a,b) => b.name.localeCompare(a.name)); break;
+            case "date_asc": filtered.sort((a,b) => new Date(a.date) - new Date(b.date)); break;
+            case "date_desc": filtered.sort((a,b) => new Date(b.date) - new Date(a.date)); break;
+            case "dept_asc": filtered.sort((a,b) => a.dept.localeCompare(b.dept)); break;
+            case "dept_desc": filtered.sort((a,b) => b.dept.localeCompare(a.dept)); break;
+            default: filtered.sort((a,b) => a.name.localeCompare(b.name));
+        }
+        return filtered;
+    };
+    
+    // patch refresh to use updated sorting
+    function finalRefresh() {
+        const filteredSorted = window.getFilteredSorted();
+        renderTable(filteredSorted);
+        renderStats(filteredSorted);
+    }
+    
+    // rewire apply/reset to use finalRefresh
+    function finalApply() {
+        currentDept = document.getElementById("deptFilter").value;
+        currentSort = document.getElementById("sortBy").value;
+        finalRefresh();
+    }
+    function finalReset() {
+        currentDept = "ALL";
+        currentSort = "name_asc";
+        const deptSelect = document.getElementById("deptFilter");
+        const sortSelect = document.getElementById("sortBy");
+        if(deptSelect) deptSelect.value = "ALL";
+        if(sortSelect) sortSelect.value = "name_asc";
+        finalRefresh();
+    }
+    
+    // initialize everything
+    function init() {
+        updateFilterDropdown();
+        // add dept sorting options to dropdown (for completeness)
+        const sortSelect = document.getElementById("sortBy");
+        if (![...sortSelect.options].some(o => o.value === "dept_asc")) {
+            sortSelect.add(new Option("Department (A-Z)", "dept_asc"));
+            sortSelect.add(new Option("Department (Z-A)", "dept_desc"));
+        }
+        document.getElementById("applyBtn").onclick = finalApply;
+        document.getElementById("resetBtn").onclick = finalReset;
+        initHeaderSort();
+        finalRefresh();
+    }
+    
+    // start
+    init();
+</script>
+</body>
+</html>
