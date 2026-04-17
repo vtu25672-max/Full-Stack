@@ -1,0 +1,227 @@
+package com.student.dal;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Controller;
+import org.springframework.stereotype.Service;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+// ====================== 1. JPA Entity ======================
+@Entity
+@Table(name = "students")
+class Student {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "first_name", nullable = false)
+    @NotBlank(message = "First name is required")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false)
+    @NotBlank(message = "Last name is required")
+    private String lastName;
+
+    @Column(nullable = false)
+    @NotBlank(message = "Department is required")
+    private String department;
+
+    @Column(nullable = false)
+    @Min(value = 18, message = "Age must be at least 18")
+    private int age;
+
+    @Column(nullable = false)
+    @NotBlank(message = "Course is required")
+    private String course;
+
+    // Getters and Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
+
+    public String getCourse() { return course; }
+    public void setCourse(String course) { this.course = course; }
+
+    @Override
+    public String toString() {
+        return String.format("Student{id=%d, name='%s %s', dept='%s', age=%d, course='%s'}",
+                id, firstName, lastName, department, age, course);
+    }
+}
+
+// ====================== 2. Repository (Data Access Layer) ======================
+interface StudentRepository extends JpaRepository<Student, Long> {
+
+    // Custom query methods
+    List<Student> findByDepartment(String department);
+
+    List<Student> findByAgeGreaterThan(int age);
+
+    // With sorting
+    List<Student> findByDepartmentOrderByAgeDesc(String department);
+
+    // With pagination and sorting
+    Page<Student> findByDepartment(String department, Pageable pageable);
+
+    Page<Student> findByAgeGreaterThan(int age, Pageable pageable);
+
+    // Combined example: Students in a department older than certain age, sorted & paginated
+    Page<Student> findByDepartmentAndAgeGreaterThan(String department, int age, Pageable pageable);
+}
+
+// ====================== 3. Service Layer ======================
+@Service
+class StudentService {
+
+    @Autowired
+    private StudentRepository repository;
+
+    public List<Student> getAllStudents() {
+        return repository.findAll();
+    }
+
+    public List<Student> getStudentsByDepartment(String department) {
+        return repository.findByDepartment(department);
+    }
+
+    public List<Student> getStudentsOlderThan(int age) {
+        return repository.findByAgeGreaterThan(age);
+    }
+
+    public Page<Student> getStudentsByDepartmentPaginated(String department, int page, int size, String sortBy) {
+        Sort sort = Sort.by(Sort.Direction.DESC, sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return repository.findByDepartment(department, pageable);
+    }
+
+    public Page<Student> getStudentsOlderThanPaginated(int age, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("age").descending());
+        return repository.findByAgeGreaterThan(age, pageable);
+    }
+
+    // Advanced combined query
+    public Page<Student> getStudentsByDepartmentAndAge(String department, int minAge, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("firstName").ascending());
+        return repository.findByDepartmentAndAgeGreaterThan(department, minAge, pageable);
+    }
+
+    public Student save(Student student) {
+        return repository.save(student);
+    }
+}
+
+// ====================== 4. Controller (for demonstration) ======================
+@Controller
+@RequestMapping("/students")
+class StudentDALController {
+
+    @Autowired
+    private StudentService service;
+
+    @GetMapping
+    public String home(Model model) {
+        model.addAttribute("students", service.getAllStudents());
+        return "students/home";
+    }
+
+    @GetMapping("/by-dept")
+    public String byDepartment(@RequestParam String dept, Model model) {
+        model.addAttribute("students", service.getStudentsByDepartment(dept));
+        model.addAttribute("title", "Students in " + dept);
+        return "students/list";
+    }
+
+    @GetMapping("/older-than")
+    public String olderThan(@RequestParam int age, Model model) {
+        model.addAttribute("students", service.getStudentsOlderThan(age));
+        model.addAttribute("title", "Students older than " + age);
+        return "students/list";
+    }
+
+    @GetMapping("/paginated")
+    public String paginated(
+            @RequestParam(defaultValue = "Engineering") String dept,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            Model model) {
+
+        Page<Student> studentPage = service.getStudentsByDepartmentPaginated(dept, page, size, "age");
+
+        model.addAttribute("students", studentPage.getContent());
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", studentPage.getTotalPages());
+        model.addAttribute("title", "Paginated Students - " + dept);
+        return "students/list";
+    }
+}
+
+// ====================== 5. Main Spring Boot Application ======================
+@SpringBootApplication
+public class StudentDataAccessLayerApp {
+
+    public static void main(String[] args) {
+        SpringApplication.run(StudentDataAccessLayerApp.class, args);
+
+        System.out.println("\n=== Task 11: Spring Data JPA Data Access Layer Started ===");
+        System.out.println("Access URLs:");
+        System.out.println("http://localhost:8080/students");
+        System.out.println("http://localhost:8080/students/by-dept?dept=Engineering");
+        System.out.println("http://localhost:8080/students/older-than?age=20");
+        System.out.println("http://localhost:8080/students/paginated?dept=Engineering&page=0&size=5");
+        System.out.println("H2 Console: http://localhost:8080/h2-console");
+    }
+}  
+
+Required Configuration (application.properties)
+spring.application.name=Student-DAL-JPA
+
+# H2 Database
+spring.datasource.url=jdbc:h2:mem:studentdaldb
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+spring.h2.console.enabled=true
+
+Thymeleaf View (src/main/resources/templates/students/list.html)
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title th:text="${title}"></title></head>
+<body>
+    <h1 th:text="${title}"></h1>
+    <table border="1">
+        <tr><th>ID</th><th>Name</th><th>Department</th><th>Age</th><th>Course</th></tr>
+        <tr th:each="s : ${students}">
+            <td th:text="${s.id}"></td>
+            <td th:text="${s.firstName + ' ' + s.lastName}"></td>
+            <td th:text="${s.department}"></td>
+            <td th:text="${s.age}"></td>
+            <td th:text="${s.course}"></td>
+        </tr>
+    </table>
+    <a href="/students">Back to Home</a>
+</body>
+</html>
